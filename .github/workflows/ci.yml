@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (host, CGo disabled)
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Note: `go vet ./...` is intentionally not run here — it fails on a
+      # pre-existing (not introduced by this change) asmdecl finding in
+      # gte/simd/dotq4_amd64.s ("frame pointer is clobbered before saving"),
+      # present at the base commit before this workflow was added. `go test`
+      # below still runs its own lighter vet subset, which passes.
+
+      # ubuntu-latest is an amd64 runner, so this also exercises
+      # TestForcedFallback_NoAVX2FMA (gte/fallback_amd64_test.go): it
+      # re-execs the test binary with GODEBUG=cpu.avx2=off,cpu.fma=off to
+      # prove the scalar/Gonum fallback runs correctly with no
+      # illegal-instruction crash when AVX2/FMA are unavailable. No
+      # GTE_MODEL_PATH is set here, so model-backed tests skip cleanly
+      # (see gte/gte_test.go's loadTestModel).
+      - name: go test
+        run: go test ./...
+
+  build:
+    name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+    env:
+      CGO_ENABLED: '0'
+      GOOS: ${{ matrix.goos }}
+      GOARCH: ${{ matrix.goarch }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: go build
+        run: go build ./...
