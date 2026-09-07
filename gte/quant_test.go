@@ -5,7 +5,7 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/rcarmo/gte-go/gte/simd"
+	"github.com/kartones/go-gte/gte/simd"
 )
 
 func TestQuantizeRoundtrip(t *testing.T) {

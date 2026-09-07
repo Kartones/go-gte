@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/rcarmo/gte-go/gte/simd"
+	"github.com/kartones/go-gte/gte/simd"
 	"gonum.org/v1/gonum/blas"
 	blasImpl32 "gonum.org/v1/gonum/blas/blas32"
 	"gonum.org/v1/gonum/blas/gonum"

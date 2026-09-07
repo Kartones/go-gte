@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/rcarmo/gte-go/gte"
+	"github.com/kartones/go-gte/gte"
 )
 
 func main() {

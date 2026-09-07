@@ -50,7 +50,7 @@ CGO_ENABLED=1 make run-go           # with OpenBLAS (max throughput)
 ## API
 
 ```go
-import "github.com/rcarmo/gte-go/gte"
+import "github.com/kartones/go-gte/gte"
 
 model, _ := gte.Load("gte-small.gtemodel")
 defer model.Close()

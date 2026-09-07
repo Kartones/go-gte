@@ -4,7 +4,7 @@ import (
 	"math"
 	"unsafe"
 
-	"github.com/rcarmo/gte-go/gte/simd"
+	"github.com/kartones/go-gte/gte/simd"
 )
 
 // linearQ4Int computes Y = X·W^T + bias where W is Q4-quantized,

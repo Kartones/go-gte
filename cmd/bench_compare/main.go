@@ -7,7 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/rcarmo/gte-go/gte"
+	"github.com/kartones/go-gte/gte"
 )
 
 var texts = []string{

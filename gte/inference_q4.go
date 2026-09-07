@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/rcarmo/gte-go/gte/simd"
+	"github.com/kartones/go-gte/gte/simd"
 )
 
 // selfAttentionQ4 runs one transformer block's self-attention with Q4 weights.
