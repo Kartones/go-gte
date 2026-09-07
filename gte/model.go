@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"syscall"
 )
 
 const (
@@ -307,7 +306,7 @@ func (m *Model) MaxLen() int { return m.MaxSeqLen }
 // Close clears references for GC and unmaps mmap'd data.
 func (m *Model) Close() {
 	if m.mmapData != nil {
-		syscall.Munmap(m.mmapData)
+		_ = munmapData(m.mmapData)
 	}
 	*m = Model{}
 }

@@ -1,3 +1,5 @@
+//go:build unix
+
 package gte
 
 import (
@@ -5,8 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
 // LoadMmap loads a .gtemodel using memory-mapped I/O.
@@ -25,7 +28,7 @@ func LoadMmap(modelPath string) (*Model, error) {
 	}
 	size := int(fi.Size())
 
-	data, err := syscall.Mmap(int(f.Fd()), 0, size, syscall.PROT_READ, syscall.MAP_SHARED)
+	data, err := unix.Mmap(int(f.Fd()), 0, size, unix.PROT_READ, unix.MAP_SHARED)
 	if err != nil {
 		return nil, fmt.Errorf("mmap: %w", err)
 	}
@@ -37,14 +40,14 @@ func LoadMmap(modelPath string) (*Model, error) {
 
 	// Magic
 	if size < 4 || string(data[0:4]) != fileMagic {
-		syscall.Munmap(data)
+		_ = munmapData(data)
 		return nil, errors.New("invalid model magic")
 	}
 	off = 4
 
 	// Config: 6 x uint32
 	if size < off+24 {
-		syscall.Munmap(data)
+		_ = munmapData(data)
 		return nil, errors.New("truncated config")
 	}
 	cfg := make([]int, 6)
@@ -59,7 +62,7 @@ func LoadMmap(modelPath string) (*Model, error) {
 	m.Intermediate = cfg[4]
 	m.MaxSeqLen = cfg[5]
 	if m.HiddenSize%m.NumHeads != 0 {
-		syscall.Munmap(data)
+		_ = munmapData(data)
 		return nil, fmt.Errorf("hidden_size %% num_heads != 0: %d %% %d", m.HiddenSize, m.NumHeads)
 	}
 	m.HeadDim = m.HiddenSize / m.NumHeads
@@ -69,13 +72,13 @@ func LoadMmap(modelPath string) (*Model, error) {
 	m.vocabMap = make(map[string]int, m.VocabSize)
 	for i := 0; i < m.VocabSize; i++ {
 		if off+2 > size {
-			syscall.Munmap(data)
+			_ = munmapData(data)
 			return nil, fmt.Errorf("truncated vocab at %d", i)
 		}
 		length := int(binary.LittleEndian.Uint16(data[off:]))
 		off += 2
 		if off+length > size {
-			syscall.Munmap(data)
+			_ = munmapData(data)
 			return nil, fmt.Errorf("truncated vocab string at %d", i)
 		}
 		m.Vocab[i] = string(data[off : off+length])
@@ -97,23 +100,23 @@ func LoadMmap(modelPath string) (*Model, error) {
 
 	// Embeddings
 	if m.TokenEmbeddings, err = sliceF32(m.VocabSize * m.HiddenSize); err != nil {
-		syscall.Munmap(data)
+		_ = munmapData(data)
 		return nil, fmt.Errorf("token embeddings: %w", err)
 	}
 	if m.PositionEmb, err = sliceF32(m.MaxSeqLen * m.HiddenSize); err != nil {
-		syscall.Munmap(data)
+		_ = munmapData(data)
 		return nil, fmt.Errorf("position embeddings: %w", err)
 	}
 	if m.TokenTypeEmb, err = sliceF32(2 * m.HiddenSize); err != nil {
-		syscall.Munmap(data)
+		_ = munmapData(data)
 		return nil, fmt.Errorf("token type embeddings: %w", err)
 	}
 	if m.EmbedLnWeight, err = sliceF32(m.HiddenSize); err != nil {
-		syscall.Munmap(data)
+		_ = munmapData(data)
 		return nil, fmt.Errorf("embed ln weight: %w", err)
 	}
 	if m.EmbedLnBias, err = sliceF32(m.HiddenSize); err != nil {
-		syscall.Munmap(data)
+		_ = munmapData(data)
 		return nil, fmt.Errorf("embed ln bias: %w", err)
 	}
 
@@ -138,7 +141,7 @@ func LoadMmap(modelPath string) (*Model, error) {
 		}
 		for _, w := range weights {
 			if *w.dst, err = sliceF32(w.size); err != nil {
-				syscall.Munmap(data)
+				_ = munmapData(data)
 				return nil, fmt.Errorf("layer %d: %w", l, err)
 			}
 		}
@@ -146,19 +149,24 @@ func LoadMmap(modelPath string) (*Model, error) {
 
 	// Pooler
 	if m.PoolerWeight, err = sliceF32(h * h); err != nil {
-		syscall.Munmap(data)
+		_ = munmapData(data)
 		return nil, fmt.Errorf("pooler weight: %w", err)
 	}
 	if m.PoolerBias, err = sliceF32(h); err != nil {
-		syscall.Munmap(data)
+		_ = munmapData(data)
 		return nil, fmt.Errorf("pooler bias: %w", err)
 	}
 
 	if err := m.initBuffers(); err != nil {
-		syscall.Munmap(data)
+		_ = munmapData(data)
 		return nil, err
 	}
 	m.fuseQKV()
 
 	return m, nil
+}
+
+// munmapData unmaps memory previously mapped by LoadMmap.
+func munmapData(data []byte) error {
+	return unix.Munmap(data)
 }
