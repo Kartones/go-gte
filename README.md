@@ -2,6 +2,8 @@
 
 A pure Go implementation of the [GTE-small](https://huggingface.co/thenlper/gte-small) text embedding model. Produces 384-dimensional, L2-normalized embeddings suitable for similarity search and clustering, ported from [@antirez's C implementation](https://github.com/antirez/gte-pure-C).
 
+> This is a fork of [rcarmo/go-gte](https://github.com/rcarmo/go-gte), hardened for use by [Kartones/skill-discovery](https://github.com/Kartones/skill-discovery): the module path was changed to `github.com/kartones/go-gte`, model loading was split by platform to avoid Unix-only syscalls in common code, and amd64 SIMD kernels are now gated behind a runtime AVX2/FMA check with a scalar/Gonum fallback instead of assuming every amd64 CPU supports them. See "Windows support" below for the current state of that platform.
+
 **Single static binary. 1 allocation per embed. Predictable flat latency.**
 
 | Platform | ms/embed | Allocs | GC pressure @ 100 qps |
@@ -116,6 +118,18 @@ Q4 is slower because FP32 weights fit in L3 cache — the dequant overhead excee
 | Pack | — | NEON 4×4 transpose |
 
 Zero gonum in hot path. 1 allocation per embed (uppercase token lowering). For all-lowercase input: **0 allocations**.
+
+## Windows support
+
+`GOOS=windows GOARCH=amd64 go build ./...` compiles cleanly: `gte/mmap_fallback.go` provides a plain-file-read `LoadMmap` for any platform without `golang.org/x/sys/unix` mmap support (Windows included), so the library does not depend on Unix-only syscalls to build.
+
+That is the extent of Windows support today. Specifically, this has **not** been verified:
+
+- Running the test suite (or anything else) under an actual Windows toolchain or OS — only a build-only cross-compile smoke check has been done, on non-Windows hosts.
+- `windows/arm64` — only `windows/amd64` has been build-checked.
+- CI does not build or test for Windows; the workflow's matrix currently covers `linux/amd64`, `linux/arm64`, `darwin/amd64`, and `darwin/arm64` only.
+
+Tracked as follow-up work in [Kartones/skill-discovery](https://github.com/Kartones/skill-discovery)'s Milestone 13 (Windows Platform Support).
 
 ## License
 
