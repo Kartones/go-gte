@@ -3,7 +3,7 @@ package gte
 import (
 	"unsafe"
 
-	"github.com/rcarmo/gte-go/gte/simd"
+	"github.com/kartones/go-gte/gte/simd"
 )
 
 // sgemm dispatches matrix multiplication to the best available backend.
@@ -33,22 +33,34 @@ func sgemm(transA, transB bool, m, n, k int, alpha float32, a []float32, lda int
 			}
 		}
 	}
-	// Use SIMD assembly SGEMM when available (amd64/arm64)
-	if simd.HasSgemmAsm {
+	// Use SIMD assembly SGEMM when the architecture has kernels AND, on
+	// amd64, the CPU actually supports AVX2+FMA at runtime. Do not infer
+	// support from GOARCH=amd64 alone — arm64 is unconditional (NEON has no
+	// optional-feature gate), amd64 without AVX2+FMA falls through to gonum.
+	switch {
+	case amd64 && simd.FastPathEnabled:
 		if !transA && transB {
-			if amd64 {
-				// amd64: VGATHERDPS NT — no packing, no horizontal reductions,
-				// zero gonum allocs. 10ms (vs gonum 6.4ms, OpenBLAS 5.5ms).
-				// VGATHERDPS throughput (5 cycles) is the limiting factor.
-				simd.SgemmNTGather(m, n, k, alpha,
-					unsafePtr(a), unsafePtr(b), unsafePtr(c),
-					lda, ldb, ldc)
-			} else {
-				// arm64: GEBP NEON = 20ms vs gonum scalar = 104ms.
-				simd.SgemmNTGebp(m, n, k, alpha,
-					unsafePtr(a), unsafePtr(b), unsafePtr(c),
-					lda, ldb, ldc)
-			}
+			// VGATHERDPS NT — no packing, no horizontal reductions,
+			// zero gonum allocs. 10ms (vs gonum 6.4ms, OpenBLAS 5.5ms).
+			// VGATHERDPS throughput (5 cycles) is the limiting factor.
+			simd.SgemmNTGather(m, n, k, alpha,
+				unsafePtr(a), unsafePtr(b), unsafePtr(c),
+				lda, ldb, ldc)
+			return
+		}
+		// NN: tiled assembly kernel, zero allocs.
+		if !transA && !transB {
+			simd.SgemmNN(m, n, k, alpha,
+				unsafePtr(a), unsafePtr(b), unsafePtr(c),
+				lda, ldb, ldc)
+			return
+		}
+	case arm64:
+		if !transA && transB {
+			// arm64: GEBP NEON = 20ms vs gonum scalar = 104ms.
+			simd.SgemmNTGebp(m, n, k, alpha,
+				unsafePtr(a), unsafePtr(b), unsafePtr(c),
+				lda, ldb, ldc)
 			return
 		}
 		// NN: tiled assembly kernel, zero allocs.
@@ -59,7 +71,8 @@ func sgemm(transA, transB bool, m, n, k int, alpha float32, a []float32, lda int
 			return
 		}
 	}
-	// Fallback: gonum BLAS
+	// Fallback: gonum BLAS (amd64 without AVX2+FMA, transposed variants, or
+	// any other architecture).
 	blasImpl.Sgemm(blasTrans(transA), blasTrans(transB), m, n, k, alpha, a, lda, b, ldb, beta, c, ldc)
 }
 

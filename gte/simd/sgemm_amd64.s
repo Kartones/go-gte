@@ -15,7 +15,7 @@
 // Stack frame: 16 bytes local storage
 //   0(SP)  = saved j counter (CX)
 //   8(SP)  = saved C[i,j] ptr (R9)
-TEXT ·SgemmNT(SB), NOSPLIT, $16-80
+TEXT ·sgemmNTAsm(SB), NOSPLIT, $16-80
     MOVQ    m+0(FP), R8
     MOVQ    n+8(FP), DX
     MOVQ    k+16(FP), R10
@@ -149,7 +149,7 @@ nt_done:
 // SgemmNN
 // ============================================================================
 // Stack frame: 8 bytes (saved j counter)
-TEXT ·SgemmNN(SB), NOSPLIT, $8-80
+TEXT ·sgemmNNAsm(SB), NOSPLIT, $8-80
     MOVQ    m+0(FP), R8
     MOVQ    n+8(FP), DX
     MOVQ    k+16(FP), R10

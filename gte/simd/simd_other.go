@@ -6,31 +6,26 @@ import "unsafe"
 
 const hasSgemmAsm = false
 
+// Sdot computes the dot product of two float32 slices (scalar fallback,
+// no SIMD assembly for this architecture).
 func Sdot(x, y []float32) float32 {
-	sum := float32(0)
-	i := 0
-	for ; i+8 <= len(x); i += 8 {
-		sum += x[i]*y[i] + x[i+1]*y[i+1] + x[i+2]*y[i+2] + x[i+3]*y[i+3] +
-			x[i+4]*y[i+4] + x[i+5]*y[i+5] + x[i+6]*y[i+6] + x[i+7]*y[i+7]
-	}
-	for ; i < len(x); i++ {
-		sum += x[i] * y[i]
-	}
-	return sum
+	return sdotScalar(x, y)
 }
 
+// Saxpy computes y[i] += alpha * x[i] (scalar fallback, no SIMD assembly
+// for this architecture).
 func Saxpy(alpha float32, x []float32, y []float32) {
-	for i := range x {
-		y[i] += alpha * x[i]
-	}
+	saxpyScalar(alpha, x, y)
 }
 
-// SgemmNT — scalar fallback, should not be called (caller checks HasSgemmAsm).
+// SgemmNT computes C += alpha * A * B^T (scalar fallback, no SIMD assembly
+// for this architecture).
 func SgemmNT(m, n, k int, alpha float32, a, b, c unsafe.Pointer, lda, ldb, ldc int) {
-	panic("SgemmNT: no SIMD assembly for this architecture")
+	sgemmNTScalar(m, n, k, alpha, a, b, c, lda, ldb, ldc)
 }
 
-// SgemmNN — scalar fallback, should not be called.
+// SgemmNN computes C += alpha * A * B (scalar fallback, no SIMD assembly for
+// this architecture).
 func SgemmNN(m, n, k int, alpha float32, a, b, c unsafe.Pointer, lda, ldb, ldc int) {
-	panic("SgemmNN: no SIMD assembly for this architecture")
+	sgemmNNScalar(m, n, k, alpha, a, b, c, lda, ldb, ldc)
 }

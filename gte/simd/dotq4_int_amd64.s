@@ -64,8 +64,8 @@ GLOBL di_127f<>(SB), (RODATA+NOPTR), $4
 DATA di_inv127f<>+0x00(SB)/4, $0x3C010204
 GLOBL di_inv127f<>(SB), (RODATA+NOPTR), $4
 
-// func DotQ4Int(x unsafe.Pointer, blocks unsafe.Pointer, nBlocks int) float32
-TEXT ·DotQ4Int(SB), NOSPLIT, $0-28
+// func dotQ4IntAsm(x unsafe.Pointer, blocks unsafe.Pointer, nBlocks int) float32
+TEXT ·dotQ4IntAsm(SB), NOSPLIT, $0-28
     MOVQ    x+0(FP), SI
     MOVQ    blocks+8(FP), DI
     MOVQ    nBlocks+16(FP), CX

@@ -44,8 +44,8 @@ DATA const_mask0f<>+0x0e(SB)/1, $0x0f
 DATA const_mask0f<>+0x0f(SB)/1, $0x0f
 GLOBL const_mask0f<>(SB), (RODATA+NOPTR), $16
 
-// func DotQ4(x unsafe.Pointer, blocks unsafe.Pointer, nBlocks int) float32
-TEXT ·DotQ4(SB), NOSPLIT, $0-28
+// func dotQ4Asm(x unsafe.Pointer, blocks unsafe.Pointer, nBlocks int) float32
+TEXT ·dotQ4Asm(SB), NOSPLIT, $0-28
     MOVQ    x+0(FP), SI          // SI = x pointer
     MOVQ    blocks+8(FP), DI     // DI = blocks pointer
     MOVQ    nBlocks+16(FP), CX   // CX = nBlocks
@@ -124,8 +124,8 @@ dotq4_done:
     VZEROUPPER
     RET
 
-// func LinearQ4(y, x, w, bias unsafe.Pointer, seqLen, inDim, outDim int)
-TEXT ·LinearQ4(SB), NOSPLIT, $0-56
+// func linearQ4Asm(y, x, w, bias unsafe.Pointer, seqLen, inDim, outDim int)
+TEXT ·linearQ4Asm(SB), NOSPLIT, $0-56
     MOVQ    y+0(FP), R8          // R8 = y
     MOVQ    x+8(FP), R9          // R9 = x
     MOVQ    w+16(FP), R10        // R10 = w
