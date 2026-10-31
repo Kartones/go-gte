@@ -52,7 +52,7 @@ func TestSgemmNTGebpShortRowBlocksDoNotReadPastA(t *testing.T) {
 			naiveSgemmNT(m, n, k, 0.5, a, k, b, k, ref, n)
 
 			for i := range got {
-				if relErr(got[i], ref[i]) > 1e-4 {
+				if absErr(got[i], ref[i]) > 1e-3 {
 					t.Fatalf("c[%d] = %v, want %v", i, got[i], ref[i])
 				}
 			}
