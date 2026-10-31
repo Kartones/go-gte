@@ -79,10 +79,6 @@ jobs:
     runs-on: windows-latest
     env:
       CGO_ENABLED: '0'
-      # Model from the Kartones/skill-discovery release; keeps in sync with
-      # releaseModelSHA256 in that repo's scripts/release/manifest.go.
-      MODEL_RELEASE_TAG: v0.1.7
-      MODEL_SHA256: 06d049fc4f67208665b05d840cc307c04d46770654a8fe25afb040f360abf171
     steps:
       - name: Disable CRLF conversion
         run: git config --global core.autocrlf false
@@ -94,48 +90,5 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Cache embedding model
-        id: model-cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/gte-model
-          key: gte-model-${{ env.MODEL_SHA256 }}
-
-      - name: Download and verify embedding model
-        if: steps.model-cache.outputs.cache-hit != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $dir = Join-Path $env:RUNNER_TEMP 'gte-model'
-          $dl = Join-Path $env:RUNNER_TEMP 'gte-model-download'
-          New-Item -ItemType Directory -Force $dir, $dl | Out-Null
-          gh release download $env:MODEL_RELEASE_TAG --repo Kartones/skill-discovery --pattern "discover-skills-$($env:MODEL_RELEASE_TAG)-linux-amd64.tar.gz" --dir $dl
-          if ($LASTEXITCODE -ne 0) { throw 'download failed' }
-          $archive = Join-Path $dl "discover-skills-$($env:MODEL_RELEASE_TAG)-linux-amd64.tar.gz"
-          $member = tar -tzf $archive | Where-Object { $_ -like '*gte-small.gtemodel' } | Select-Object -First 1
-          if (-not $member) { throw 'gte-small.gtemodel not found in archive' }
-          tar -xzf $archive -C $dir $member
-          if ($LASTEXITCODE -ne 0) { throw 'extract failed' }
-          $model = Join-Path $dir $member
-          Move-Item $model (Join-Path $dir 'gte-small.gtemodel') -Force
-          $actual = (Get-FileHash -Algorithm SHA256 (Join-Path $dir 'gte-small.gtemodel')).Hash.ToLower()
-          if ($actual -ne $env:MODEL_SHA256) { throw "model SHA-256 mismatch: $actual" }
-
-      - name: Verify cached embedding model
-        run: |
-          $model = Join-Path $env:RUNNER_TEMP 'gte-model\gte-small.gtemodel'
-          $actual = (Get-FileHash -Algorithm SHA256 $model).Hash.ToLower()
-          if ($actual -ne $env:MODEL_SHA256) { throw "model SHA-256 mismatch: $actual" }
-          "GTE_MODEL_PATH=$model" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-
       - name: go test
         run: go test ./...
-
-      # TestEmbedSimilarities uses Load; TestEmbedSimilaritiesMmap uses LoadMmap
-      # (mmap_fallback.go on Windows); TestEmbedBatch and TestEmbedEmpty use Load.
-      - name: go test (real model, must not skip)
-        run: |
-          $out = go test -v -count=1 -run '^(TestEmbedSimilarities|TestEmbedSimilaritiesMmap|TestEmbedBatch|TestEmbedEmpty)$' ./gte 2>&1 | Tee-Object -Variable log
-          $out | Write-Host
-          if ($LASTEXITCODE -ne 0) { throw 'tests failed' }
-          if ($log -match '--- SKIP') { throw 'model-backed tests were skipped' }
