@@ -2,7 +2,7 @@
 
 A pure Go implementation of the [GTE-small](https://huggingface.co/thenlper/gte-small) text embedding model. Produces 384-dimensional, L2-normalized embeddings suitable for similarity search and clustering, ported from [@antirez's C implementation](https://github.com/antirez/gte-pure-C).
 
-> This is a fork of [rcarmo/go-gte](https://github.com/rcarmo/go-gte), hardened for use by [Kartones/skill-discovery](https://github.com/Kartones/skill-discovery): the module path was changed to `github.com/kartones/go-gte`, model loading was split by platform to avoid Unix-only syscalls in common code, and amd64 SIMD kernels are now gated behind a runtime AVX2/FMA check with a scalar/Gonum fallback instead of assuming every amd64 CPU supports them. See "Windows support" below for the current state of that platform.
+> This is a fork of [rcarmo/go-gte](https://github.com/rcarmo/go-gte), maintained by [Kartones](https://github.com/Kartones/): the module path was changed to `github.com/kartones/go-gte`, model loading was split by platform to avoid Unix-only syscalls in common code, and amd64 SIMD kernels are now gated behind a runtime AVX2/FMA check with a scalar/Gonum fallback instead of assuming every amd64 CPU supports them. See "Windows support" below for the current state of that platform.
 
 **Single static binary. 1 allocation per embed. Predictable flat latency.**
 
@@ -125,10 +125,8 @@ Zero gonum in hot path. 1 allocation per embed (uppercase token lowering). For a
 
 Not verified:
 
-- Model-backed tests (`Load`, `LoadMmap`, embeddings) are **not** run in this repo's CI. They skip when `GTE_MODEL_PATH` is unset, and the CI workflow cannot fetch the model from the private [Kartones/skill-discovery](https://github.com/Kartones/skill-discovery) release.
+- Model-backed tests (`Load`, `LoadMmap`, embeddings) are **not** run in this repo's CI. They skip when `GTE_MODEL_PATH` is unset, and the CI workflow has no access to the model file.
 - `windows/arm64` is untested and unsupported.
-
-Tracked as follow-up work in [Kartones/skill-discovery](https://github.com/Kartones/skill-discovery)'s Milestone 14 (Windows platform support).
 
 ## License
 
