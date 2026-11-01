@@ -121,15 +121,14 @@ Zero gonum in hot path. 1 allocation per embed (uppercase token lowering). For a
 
 ## Windows support
 
-`GOOS=windows GOARCH=amd64 go build ./...` compiles cleanly: `gte/mmap_fallback.go` provides a plain-file-read `LoadMmap` for any platform without `golang.org/x/sys/unix` mmap support (Windows included), so the library does not depend on Unix-only syscalls to build.
+`windows/amd64` builds and passes the non-model tests in CI on `windows-latest` (CGo disabled): see [this run](https://github.com/Kartones/go-gte/actions/runs/41190302527). `gte/mmap_fallback.go` provides a plain-file-read `LoadMmap` for platforms without `golang.org/x/sys/unix` mmap support (Windows included), so the library does not depend on Unix-only syscalls to build.
 
-That is the extent of Windows support today. Specifically, this has **not** been verified:
+Not verified:
 
-- Running the test suite (or anything else) under an actual Windows toolchain or OS — only a build-only cross-compile smoke check has been done, on non-Windows hosts.
-- `windows/arm64` — only `windows/amd64` has been build-checked.
-- CI does not build or test for Windows; the workflow's matrix currently covers `linux/amd64`, `linux/arm64`, `darwin/amd64`, and `darwin/arm64` only.
+- Model-backed tests (`Load`, `LoadMmap`, embeddings) are **not** run in this repo's CI. They skip when `GTE_MODEL_PATH` is unset, and the CI workflow cannot fetch the model from the private [Kartones/skill-discovery](https://github.com/Kartones/skill-discovery) release.
+- `windows/arm64` is untested and unsupported.
 
-Tracked as follow-up work in [Kartones/skill-discovery](https://github.com/Kartones/skill-discovery)'s Milestone 13 (Windows Platform Support).
+Tracked as follow-up work in [Kartones/skill-discovery](https://github.com/Kartones/skill-discovery)'s Milestone 14 (Windows platform support).
 
 ## License
 

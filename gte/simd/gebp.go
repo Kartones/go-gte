@@ -1,6 +1,7 @@
 package simd
 
 import (
+	"sync"
 	"unsafe"
 )
 
@@ -78,6 +79,33 @@ func packBNTScalar(b []float32, ldb, jj, nr, k int, bp []float32) {
 	}
 }
 
+var shortRowsPool = sync.Pool{
+	New: func() any { return new([]float32) },
+}
+
+// padShortRows copies the mr valid rows of A starting at row ii into a
+// zero-padded gebpMR-row block with stride k, so the micro-kernel (which
+// always reads gebpMR rows) never reads past the end of A. The block comes
+// from a pool (safe for concurrent callers); release it with putShortRows.
+func padShortRows(a []float32, lda, ii, mr, k int) *[]float32 {
+	buf := shortRowsPool.Get().(*[]float32)
+	size := gebpMR * k
+	if cap(*buf) < size {
+		*buf = make([]float32, size)
+	}
+	padded := (*buf)[:size]
+	clear(padded[mr*k:])
+	for i := 0; i < mr; i++ {
+		copy(padded[i*k:(i+1)*k], a[(ii+i)*lda:(ii+i)*lda+k])
+	}
+	*buf = padded
+	return buf
+}
+
+func putShortRows(buf *[]float32) {
+	shortRowsPool.Put(buf)
+}
+
 func SgemmNTGebp(m, n, k int, alpha float32, aPtr, bPtr, cPtr unsafe.Pointer, lda, ldb, ldc int) {
 	if m == 0 || n == 0 || k == 0 {
 		return
@@ -86,6 +114,14 @@ func SgemmNTGebp(m, n, k int, alpha float32, aPtr, bPtr, cPtr unsafe.Pointer, ld
 	b := unsafe.Slice((*float32)(bPtr), n*ldb)
 	c := unsafe.Slice((*float32)(cPtr), m*ldc)
 	bp := ensureGebpBuf(k * gebpNR)
+
+	tailStart := m - m%gebpMR
+	var aTail []float32
+	if tailStart < m {
+		tailBuf := padShortRows(a, lda, tailStart, m-tailStart, k)
+		defer putShortRows(tailBuf)
+		aTail = *tailBuf
+	}
 
 	for jj := 0; jj < n; jj += gebpNR {
 		nr := gebpNR
@@ -113,8 +149,8 @@ func SgemmNTGebp(m, n, k int, alpha float32, aPtr, bPtr, cPtr unsafe.Pointer, ld
 						copy(tmp[i*gebpNR:i*gebpNR+gebpNR], c[(ii+i)*ldc+jj:(ii+i)*ldc+jj+gebpNR])
 					}
 					gebpMicroKernel(k, alpha,
-						unsafe.Pointer(&a[ii*lda]),
-						lda,
+						unsafe.Pointer(&aTail[0]),
+						k,
 						unsafe.Pointer(&bp[0]),
 						unsafe.Pointer(&tmp[0]),
 						gebpNR)
